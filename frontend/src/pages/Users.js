@@ -24,7 +24,6 @@ import {
 import AppLayout from '../components/Layout';
 import {
   getUsers,
-  createCategory,
   updateUser,
   deleteUser
 } from '../services/userService';

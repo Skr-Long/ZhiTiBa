@@ -154,8 +154,22 @@ const Questions = () => {
 
   const handleEdit = (record) => {
     setEditingQuestion(record);
+    
+    const formattedOptions = [];
+    if (record.options && record.options.length > 0) {
+      record.options.forEach((opt, index) => {
+        formattedOptions[optionKeys.indexOf(opt.key)] = opt;
+      });
+      for (let i = 0; i < optionKeys.length; i++) {
+        if (!formattedOptions[i]) {
+          formattedOptions[i] = { key: optionKeys[i], content: '' };
+        }
+      }
+    }
+    
     form.setFieldsValue({
       ...record,
+      options: formattedOptions,
       subject: record.subject?.id,
       chapter: record.chapter?.id,
       difficulty: record.difficulty?.id
@@ -184,11 +198,24 @@ const Questions = () => {
 
   const handleSubmit = async (values) => {
     try {
+      const submitData = { ...values };
+      
+      if (submitData.options && Array.isArray(submitData.options)) {
+        const validOptions = submitData.options
+          .map((opt, index) => ({
+            key: optionKeys[index],
+            content: opt && typeof opt === 'object' ? opt.content : opt || ''
+          }))
+          .filter(opt => opt.content && opt.content.trim() !== '');
+        
+        submitData.options = validOptions;
+      }
+      
       let res;
       if (editingQuestion) {
-        res = await updateQuestion(editingQuestion.id, values);
+        res = await updateQuestion(editingQuestion.id, submitData);
       } else {
-        res = await createQuestion(values);
+        res = await createQuestion(submitData);
       }
 
       if (res.success) {
@@ -432,7 +459,7 @@ const Questions = () => {
                       {optionKeys.map((key, index) => (
                         <Form.Item
                           key={key}
-                          name={['options', index]}
+                          name={['options', index, 'content']}
                           label={`选项 ${key}`}
                           rules={index < 2 ? [{ required: true, message: `选项 ${key} 不能为空` }] : []}
                         >
