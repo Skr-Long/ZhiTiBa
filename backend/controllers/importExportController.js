@@ -134,7 +134,9 @@ exports.importQuestions = async (req, res) => {
 
 exports.exportQuestions = async (req, res) => {
   try {
-    const { ids, format = 'json', subject, chapter, difficulty, type, keyword } = req.query;
+    const isGet = req.method === 'GET';
+    const params = isGet ? req.query : req.body;
+    const { ids, format = 'json', subject, chapter, difficulty, type, keyword } = params;
     
     let questionIds;
     
@@ -164,7 +166,16 @@ exports.exportQuestions = async (req, res) => {
       });
     }
 
-    if (format === 'excel' || format === 'xlsx') {
+    let useExcel = format === 'excel' || format === 'xlsx';
+    if (!isGet) {
+      if (req.path.includes('export-excel')) {
+        useExcel = true;
+      } else if (req.path.includes('export-json')) {
+        useExcel = false;
+      }
+    }
+
+    if (useExcel) {
       await importExportService.exportToExcel(questionIds, res);
     } else {
       await importExportService.exportToJSON(questionIds, res);

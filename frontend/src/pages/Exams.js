@@ -110,22 +110,52 @@ const Exams = () => {
   const handleCreate = () => {
     setEditingExam(null);
     form.resetFields();
+    form.setFieldsValue({
+      totalScore: 100,
+      duration: 60,
+      maxAttempts: 1,
+      settings: ['allowRetry', 'showAnswerAfterSubmit', 'showScoreAfterSubmit']
+    });
     setModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setEditingExam(record);
-    form.setFieldsValue(record);
+    const settings = record.settings;
+    let settingsArray = [];
+    if (settings) {
+      if (Array.isArray(settings)) {
+        settingsArray = settings;
+      } else if (typeof settings === 'object') {
+        settingsArray = Object.entries(settings)
+          .filter(([key, value]) => value === true)
+          .map(([key]) => key);
+      }
+    }
+    form.setFieldsValue({
+      ...record,
+      settings: settingsArray
+    });
     setModalVisible(true);
   };
 
   const handleSubmit = async (values) => {
     try {
+      const submitData = { ...values };
+      const settingsArray = values.settings || [];
+      submitData.settings = {
+        shuffleQuestions: settingsArray.includes('shuffleQuestions'),
+        shuffleOptions: settingsArray.includes('shuffleOptions'),
+        allowRetry: settingsArray.includes('allowRetry'),
+        showAnswerAfterSubmit: settingsArray.includes('showAnswerAfterSubmit'),
+        showScoreAfterSubmit: settingsArray.includes('showScoreAfterSubmit')
+      };
+
       if (editingExam) {
-        await updateExam(editingExam._id, values);
+        await updateExam(editingExam._id, submitData);
         message.success('试卷更新成功');
       } else {
-        await createExam(values);
+        await createExam(submitData);
         message.success('试卷创建成功');
       }
       setModalVisible(false);
@@ -395,7 +425,7 @@ const Exams = () => {
               >
                 <Select placeholder="请选择学科">
                   {categories.subjects.map(sub => (
-                    <Option key={sub._id} value={sub._id}>{sub.name}</Option>
+                    <Option key={sub.id} value={sub.id}>{sub.name}</Option>
                   ))}
                 </Select>
               </Form.Item>
@@ -414,7 +444,6 @@ const Exams = () => {
               <Form.Item
                 name="totalScore"
                 label="总分"
-                initialValue={100}
               >
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
@@ -423,7 +452,6 @@ const Exams = () => {
               <Form.Item
                 name="duration"
                 label="考试时长(分钟)"
-                initialValue={60}
               >
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
@@ -432,7 +460,6 @@ const Exams = () => {
               <Form.Item
                 name="maxAttempts"
                 label="最多尝试次数"
-                initialValue={1}
               >
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
@@ -444,7 +471,6 @@ const Exams = () => {
           <Form.Item
             label="设置选项"
             name="settings"
-            initialValue={{ shuffleQuestions: false, shuffleOptions: false, allowRetry: true, showAnswerAfterSubmit: true, showScoreAfterSubmit: true }}
           >
             <Checkbox.Group>
               <Space direction="vertical">
@@ -527,7 +553,7 @@ const Exams = () => {
                     >
                       <Select mode="multiple" placeholder="请选择章节">
                         {categories.chapters.map(ch => (
-                          <Option key={ch._id} value={ch._id}>{ch.name}</Option>
+                          <Option key={ch.id} value={ch.id}>{ch.name}</Option>
                         ))}
                       </Select>
                     </Form.Item>
@@ -553,7 +579,7 @@ const Exams = () => {
                     >
                       <Select placeholder="请选择AI智能体">
                         {agents.map(agent => (
-                          <Option key={agent._id} value={agent._id}>{agent.name}</Option>
+                          <Option key={agent.id} value={agent.id}>{agent.name}</Option>
                         ))}
                       </Select>
                     </Form.Item>

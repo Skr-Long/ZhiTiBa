@@ -116,7 +116,8 @@ exports.createExam = async (req, res) => {
       showAnswerAfterSubmit,
       showScoreAfterSubmit,
       shuffleQuestions,
-      shuffleOptions
+      shuffleOptions,
+      settings
     } = req.body;
 
     if (!title || !subject) {
@@ -125,6 +126,8 @@ exports.createExam = async (req, res) => {
         message: '试卷标题和学科为必填项'
       });
     }
+
+    const examSettings = settings || {};
 
     let questionData = [];
     if (questions && Array.isArray(questions)) {
@@ -149,12 +152,12 @@ exports.createExam = async (req, res) => {
       isPublic: isPublic || false,
       startTime,
       endTime,
-      allowRetry: allowRetry !== undefined ? allowRetry : true,
+      allowRetry: allowRetry !== undefined ? allowRetry : (examSettings.allowRetry !== undefined ? examSettings.allowRetry : true),
       maxAttempts: maxAttempts || 3,
-      showAnswerAfterSubmit: showAnswerAfterSubmit !== undefined ? showAnswerAfterSubmit : true,
-      showScoreAfterSubmit: showScoreAfterSubmit !== undefined ? showScoreAfterSubmit : true,
-      shuffleQuestions: shuffleQuestions || false,
-      shuffleOptions: shuffleOptions || false,
+      showAnswerAfterSubmit: showAnswerAfterSubmit !== undefined ? showAnswerAfterSubmit : (examSettings.showAnswerAfterSubmit !== undefined ? examSettings.showAnswerAfterSubmit : true),
+      showScoreAfterSubmit: showScoreAfterSubmit !== undefined ? showScoreAfterSubmit : (examSettings.showScoreAfterSubmit !== undefined ? examSettings.showScoreAfterSubmit : true),
+      shuffleQuestions: shuffleQuestions || examSettings.shuffleQuestions || false,
+      shuffleOptions: shuffleOptions || examSettings.shuffleOptions || false,
       createdBy: req.user._id
     });
 
@@ -206,7 +209,7 @@ exports.updateExam = async (req, res) => {
       });
     }
 
-    const { questions, ...updateData } = req.body;
+    const { questions, settings, ...updateData } = req.body;
 
     if (questions && Array.isArray(questions)) {
       updateData.questions = questions.map((q, index) => ({
@@ -215,6 +218,14 @@ exports.updateExam = async (req, res) => {
         order: q.order !== undefined ? q.order : index
       }));
       updateData.questionCount = questions.length;
+    }
+
+    if (settings) {
+      if (settings.allowRetry !== undefined) updateData.allowRetry = settings.allowRetry;
+      if (settings.showAnswerAfterSubmit !== undefined) updateData.showAnswerAfterSubmit = settings.showAnswerAfterSubmit;
+      if (settings.showScoreAfterSubmit !== undefined) updateData.showScoreAfterSubmit = settings.showScoreAfterSubmit;
+      if (settings.shuffleQuestions !== undefined) updateData.shuffleQuestions = settings.shuffleQuestions;
+      if (settings.shuffleOptions !== undefined) updateData.shuffleOptions = settings.shuffleOptions;
     }
 
     updateData.updatedBy = req.user._id;

@@ -10,6 +10,8 @@ const {
 const router = express.Router();
 
 router.post('/import', protect, uploadFile, importQuestions);
+router.post('/export-json', protect, exportQuestions);
+router.post('/export-excel', protect, exportQuestions);
 router.get('/export', protect, exportQuestions);
 router.get('/template', protect, getTemplate);
 
