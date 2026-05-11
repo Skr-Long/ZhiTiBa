@@ -23,10 +23,15 @@ exports.getExams = async (req, res) => {
       query.isPublished = true;
       query.isPublic = true;
     } else if (req.user.role === 'teacher') {
+      const teacherQuery = { ...query };
+      delete teacherQuery.$or;
       query.$or = [
-        { createdBy: req.user._id },
-        { isPublic: true, isPublished: true }
+        { ...teacherQuery, createdBy: req.user._id },
+        { ...teacherQuery, isPublic: true, isPublished: true }
       ];
+      delete query.createdBy;
+      delete query.isPublic;
+      delete query.isPublished;
     }
 
     const total = await Exam.countDocuments(query);

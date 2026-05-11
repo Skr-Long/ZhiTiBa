@@ -97,7 +97,9 @@ exports.createAgent = async (req, res) => {
       });
     }
 
-    if (type === 'api' && (!apiUrl || !apiKey)) {
+    const agentType = type === 'openai' ? 'api' : type;
+
+    if (agentType === 'api' && (!apiUrl || !apiKey)) {
       return res.status(400).json({
         success: false,
         message: 'API类型智能体需要配置API地址和密钥'
@@ -114,7 +116,7 @@ exports.createAgent = async (req, res) => {
     const agent = await AIAgent.create({
       name,
       description,
-      type: type || 'api',
+      type: agentType || 'api',
       provider,
       apiUrl,
       apiKey,

@@ -70,29 +70,44 @@ const AIAgents = () => {
     setEditingAgent(null);
     form.resetFields();
     form.setFieldsValue({
-      type: 'openai',
+      type: 'api',
       model: 'gpt-3.5-turbo',
       maxTokens: 2000,
       temperature: 0.7,
       isActive: true,
-      capabilities: ['chat', 'question_generation']
+      capabilities: ['generate_question', 'generate_exam', 'solve_question', 'analyze_answer']
     });
     setModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setEditingAgent(record);
-    form.setFieldsValue(record);
+    const idKey = record.id || record._id;
+    const displayType = record.type === 'api' ? 'api' : (record.type || 'api');
+    
+    form.setFieldsValue({
+      ...record,
+      id: idKey,
+      _id: idKey,
+      type: displayType
+    });
     setModalVisible(true);
   };
 
   const handleSubmit = async (values) => {
     try {
+      const submitData = { ...values };
+      if (submitData.type === 'openai') {
+        submitData.type = 'api';
+      }
+      
+      const id = editingAgent ? (editingAgent.id || editingAgent._id) : null;
+      
       if (editingAgent) {
-        await updateAgent(editingAgent._id, values);
+        await updateAgent(id, submitData);
         message.success('AI智能体更新成功');
       } else {
-        await createAgent(values);
+        await createAgent(submitData);
         message.success('AI智能体创建成功');
       }
       setModalVisible(false);
@@ -122,7 +137,7 @@ const AIAgents = () => {
       return;
     }
     
-    const systemAgents = agents.filter(a => a.isSystem && selectedRowKeys.includes(a._id));
+    const systemAgents = agents.filter(a => a.isSystem && selectedRowKeys.includes(a.id || a._id));
     if (systemAgents.length > 0) {
       message.warning('选中的AI智能体中包含内置智能体，无法删除');
       return;
@@ -138,7 +153,8 @@ const AIAgents = () => {
     }
   };
 
-  const handleTest = async (id) => {
+  const handleTest = async (record) => {
+    const id = record.id || record._id;
     setTestingId(id);
     try {
       const response = await testAgentConnection(id);
@@ -152,7 +168,8 @@ const AIAgents = () => {
     }
   };
 
-  const handleSetDefault = async (id) => {
+  const handleSetDefault = async (record) => {
+    const id = record.id || record._id;
     try {
       await setDefaultAgent(id);
       message.success('已设置为默认智能体');
@@ -170,7 +187,7 @@ const AIAgents = () => {
       render: (text, record) => (
         <Space>
           {text}
-          {record.isSystem && <Tag color="gold">内置</Tag>}
+          {record.type === 'builtin' && <Tag color="gold">内置</Tag>}
           {record.isDefault && <Tag color="green">默认</Tag>}
         </Space>
       )
@@ -181,9 +198,9 @@ const AIAgents = () => {
       key: 'type',
       render: (type) => {
         const typeMap = {
-          openai: 'OpenAI 兼容',
+          api: 'API',
           custom: '自定义API',
-          mock: '模拟'
+          builtin: '内置'
         };
         return <Tag>{typeMap[type] || type}</Tag>;
       }
@@ -197,15 +214,23 @@ const AIAgents = () => {
       title: '功能',
       dataIndex: 'capabilities',
       key: 'capabilities',
-      render: (caps) => (
-        <Space wrap>
-          {caps?.map(cap => (
-            <Tag key={cap} color="blue">
-              {cap}
-            </Tag>
-          ))}
-        </Space>
-      )
+      render: (caps) => {
+        const capMap = {
+          generate_question: '智能出题',
+          generate_exam: '智能组卷',
+          solve_question: '解题',
+          analyze_answer: '答案分析'
+        };
+        return (
+          <Space wrap>
+            {caps?.map(cap => (
+              <Tag key={cap} color="blue">
+                {capMap[cap] || cap}
+              </Tag>
+            ))}
+          </Space>
+        );
+      }
     },
     {
       title: '状态',
@@ -220,66 +245,70 @@ const AIAgents = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            icon={<PlayCircleOutlined />}
-            onClick={() => handleTest(record._id)}
-            loading={testingId === record._id}
-            size="small"
-          >
-            测试
-          </Button>
-          {!record.isDefault && (
+      render: (_, record) => {
+        const id = record.id || record._id;
+        const isBuiltin = record.type === 'builtin';
+        return (
+          <Space size="small">
             <Button
               type="link"
-              onClick={() => handleSetDefault(record._id)}
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleTest(record)}
+              loading={testingId === id}
               size="small"
             >
-              设为默认
+              测试
             </Button>
-          )}
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            size="small"
-          >
-            编辑
-          </Button>
-          {!record.isSystem ? (
-            <Popconfirm
-              title="确认删除此AI智能体？"
-              description="删除后无法恢复，确定要删除吗？"
-              onConfirm={() => handleDelete(record._id, record.isSystem)}
-              okText="确认"
-              cancelText="取消"
+            {!record.isDefault && (
+              <Button
+                type="link"
+                onClick={() => handleSetDefault(record)}
+                size="small"
+              >
+                设为默认
+              </Button>
+            )}
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+              size="small"
             >
-              <Button
-                type="link"
-                danger
-                icon={<DeleteOutlined />}
-                size="small"
+              编辑
+            </Button>
+            {!isBuiltin ? (
+              <Popconfirm
+                title="确认删除此AI智能体？"
+                description="删除后无法恢复，确定要删除吗？"
+                onConfirm={() => handleDelete(id, isBuiltin)}
+                okText="确认"
+                cancelText="取消"
               >
-                删除
-              </Button>
-            </Popconfirm>
-          ) : (
-            <Tooltip title="内置AI智能体不能删除">
-              <Button
-                type="link"
-                danger
-                disabled
-                icon={<DeleteOutlined />}
-                size="small"
-              >
-                删除
-              </Button>
-            </Tooltip>
-          )}
-        </Space>
-      )
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  size="small"
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Tooltip title="内置AI智能体不能删除">
+                <Button
+                  type="link"
+                  danger
+                  disabled
+                  icon={<DeleteOutlined />}
+                  size="small"
+                >
+                  删除
+                </Button>
+              </Tooltip>
+            )}
+          </Space>
+        );
+      }
     }
   ];
 
@@ -287,7 +316,7 @@ const AIAgents = () => {
     selectedRowKeys,
     onChange: setSelectedRowKeys,
     getCheckboxProps: (record) => ({
-      disabled: record.isSystem,
+      disabled: record.type === 'builtin',
       name: record.name
     })
   };
@@ -324,7 +353,7 @@ const AIAgents = () => {
         </Space>
 
         <Table
-          rowKey="_id"
+          rowKey={(record) => record.id || record._id}
           columns={columns}
           dataSource={agents}
           loading={loading}
@@ -362,7 +391,7 @@ const AIAgents = () => {
                 rules={[{ required: true, message: '请选择类型' }]}
               >
                 <Select>
-                  <Option value="openai">OpenAI 兼容</Option>
+                  <Option value="api">API</Option>
                   <Option value="custom">自定义API</Option>
                 </Select>
               </Form.Item>
@@ -399,7 +428,6 @@ const AIAgents = () => {
               <Form.Item
                 name="maxTokens"
                 label="最大token数"
-                initialValue={2000}
               >
                 <InputNumber min={100} max={32000} style={{ width: '100%' }} />
               </Form.Item>
@@ -409,7 +437,6 @@ const AIAgents = () => {
           <Form.Item
             name="temperature"
             label="温度参数 (0-1)"
-            initialValue={0.7}
           >
             <InputNumber min={0} max={1} step={0.1} style={{ width: '100%' }} />
           </Form.Item>
@@ -417,14 +444,13 @@ const AIAgents = () => {
           <Form.Item
             name="capabilities"
             label="功能"
-            initialValue={['chat', 'question_generation']}
           >
             <Checkbox.Group>
               <Space>
-                <Checkbox value="chat">聊天对话</Checkbox>
-                <Checkbox value="question_generation">智能出题</Checkbox>
-                <Checkbox value="question_solve">解题</Checkbox>
-                <Checkbox value="analysis">题目分析</Checkbox>
+                <Checkbox value="generate_question">智能出题</Checkbox>
+                <Checkbox value="generate_exam">智能组卷</Checkbox>
+                <Checkbox value="solve_question">解题</Checkbox>
+                <Checkbox value="analyze_answer">答案分析</Checkbox>
               </Space>
             </Checkbox.Group>
           </Form.Item>
@@ -433,7 +459,6 @@ const AIAgents = () => {
             name="isActive"
             label="状态"
             valuePropName="checked"
-            initialValue={true}
           >
             <Checkbox>启用此AI智能体</Checkbox>
           </Form.Item>

@@ -132,8 +132,12 @@ const Exams = () => {
           .map(([key]) => key);
       }
     }
+    const idKey = record.id || record._id;
     form.setFieldsValue({
       ...record,
+      id: idKey,
+      _id: idKey,
+      subject: record.subject?.id || record.subject?._id || record.subject,
       settings: settingsArray
     });
     setModalVisible(true);
@@ -152,7 +156,7 @@ const Exams = () => {
       };
 
       if (editingExam) {
-        await updateExam(editingExam._id, submitData);
+        await updateExam(editingExam.id || editingExam._id, submitData);
         message.success('试卷更新成功');
       } else {
         await createExam(submitData);
@@ -294,49 +298,52 @@ const Exams = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          {record.isPublished ? (
+      render: (_, record) => {
+        const id = record.id || record._id;
+        return (
+          <Space size="middle">
             <Button
               type="link"
-              icon={<PauseCircleOutlined />}
-              onClick={() => handleUnpublish(record._id)}
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
             >
-              取消发布
+              编辑
             </Button>
-          ) : (
-            <Button
-              type="link"
-              icon={<PlayCircleOutlined />}
-              onClick={() => handlePublish(record._id)}
+            {record.isPublished ? (
+              <Button
+                type="link"
+                icon={<PauseCircleOutlined />}
+                onClick={() => handleUnpublish(id)}
+              >
+                取消发布
+              </Button>
+            ) : (
+              <Button
+                type="link"
+                icon={<PlayCircleOutlined />}
+                onClick={() => handlePublish(id)}
+              >
+                发布
+              </Button>
+            )}
+            <Popconfirm
+              title="确认删除此试卷？"
+              description="删除后无法恢复，确定要删除吗？"
+              onConfirm={() => handleDelete(id)}
+              okText="确认"
+              cancelText="取消"
             >
-              发布
-            </Button>
-          )}
-          <Popconfirm
-            title="确认删除此试卷？"
-            description="删除后无法恢复，确定要删除吗？"
-            onConfirm={() => handleDelete(record._id)}
-            okText="确认"
-            cancelText="取消"
-          >
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-            >
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      )
+              <Button
+                type="link"
+                danger
+                icon={<DeleteOutlined />}
+              >
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      }
     }
   ];
 
