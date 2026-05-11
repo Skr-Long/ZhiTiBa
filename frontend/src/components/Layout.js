@@ -8,7 +8,11 @@ import {
   SettingOutlined,
   LogoutOutlined,
   MenuUnfoldOutlined,
-  MenuFoldOutlined
+  MenuFoldOutlined,
+  FileTextOutlined,
+  RobotOutlined,
+  HistoryOutlined,
+  BarChartOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +25,8 @@ const AppLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
+  
   const menuItems = [
     {
       key: '/',
@@ -39,6 +45,24 @@ const AppLayout = ({ children }) => {
       icon: <FolderOpenOutlined />,
       label: '分类管理',
       onClick: () => navigate('/categories')
+    },
+    {
+      key: '/exams',
+      icon: <FileTextOutlined />,
+      label: '试卷管理',
+      onClick: () => navigate('/exams')
+    },
+    {
+      key: '/my-answers',
+      icon: <HistoryOutlined />,
+      label: '我的答卷',
+      onClick: () => navigate('/my-answers')
+    },
+    {
+      key: '/ai-agents',
+      icon: <RobotOutlined />,
+      label: 'AI智能体',
+      onClick: () => navigate('/ai-agents')
     },
     {
       key: '/profile',

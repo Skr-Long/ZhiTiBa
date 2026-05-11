@@ -27,3 +27,7 @@ export const getMyQuestions = (params) => {
 export const importQuestions = (data) => {
   return api.post('/questions/import', data);
 };
+
+export const batchDeleteQuestions = (ids) => {
+  return api.post('/questions/batch-delete', { ids });
+};

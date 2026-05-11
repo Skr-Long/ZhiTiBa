@@ -383,6 +383,47 @@ exports.getMyQuestions = async (req, res) => {
   }
 };
 
+exports.batchDeleteQuestions = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '请选择要删除的题目'
+      });
+    }
+
+    const questions = await Question.find({ _id: { $in: ids }, isActive: true });
+    
+    if (req.user.role !== 'admin') {
+      const myQuestions = questions.filter(q => q.createdBy.toString() === req.user._id.toString());
+      if (myQuestions.length !== questions.length) {
+        return res.status(403).json({
+          success: false,
+          message: '您没有权限删除部分题目'
+        });
+      }
+    }
+
+    await Question.updateMany(
+      { _id: { $in: ids } },
+      { isActive: false }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `成功删除 ${ids.length} 道题目`
+    });
+  } catch (error) {
+    console.error('Batch delete questions error:', error);
+    res.status(500).json({
+      success: false,
+      message: '批量删除题目失败'
+    });
+  }
+};
+
 exports.importQuestions = async (req, res) => {
   try {
     const { questions } = req.body;

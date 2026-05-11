@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Table,
   Card,
@@ -16,7 +16,10 @@ import {
   InputNumber,
   Switch,
   Divider,
-  Tooltip
+  Tooltip,
+  Upload,
+  Dropdown,
+  Menu
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,20 +27,29 @@ import {
   DeleteOutlined,
   SearchOutlined,
   ReloadOutlined,
-  EyeOutlined
+  EyeOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  InboxOutlined
 } from '@ant-design/icons';
 import AppLayout from '../components/Layout';
 import {
   getQuestions,
   createQuestion,
   updateQuestion,
-  deleteQuestion
+  deleteQuestion,
+  batchDeleteQuestions
 } from '../services/questionService';
 import {
   getSubjects,
   getChapters,
   getDifficulties
 } from '../services/categoryService';
+import {
+  importQuestionsFromFile,
+  exportQuestionsToJSON,
+  exportQuestionsToExcel
+} from '../services/importExportService';
 import {
   QUESTION_TYPES,
   QUESTION_TYPE_MAP,
@@ -65,8 +77,12 @@ const Questions = () => {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [viewingQuestion, setViewingQuestion] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
 
   const [form] = Form.useForm();
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchCategories();
@@ -193,6 +209,85 @@ const Questions = () => {
       }
     } catch (error) {
       message.error('删除失败');
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请选择要删除的题目');
+      return;
+    }
+    try {
+      const res = await batchDeleteQuestions(selectedRowKeys);
+      if (res.success) {
+        message.success(`成功删除 ${selectedRowKeys.length} 道题目`);
+        setSelectedRowKeys([]);
+        fetchQuestions();
+      }
+    } catch (error) {
+      message.error('批量删除失败');
+    }
+  };
+
+  const handleImport = () => {
+    setImportModalVisible(true);
+  };
+
+  const handleImportFile = async (options) => {
+    const { file } = options;
+    setImportLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await importQuestionsFromFile(formData);
+      if (res.success) {
+        message.success(res.message || '导入成功');
+        setImportModalVisible(false);
+        fetchQuestions();
+      } else {
+        message.error(res.message || '导入失败');
+      }
+    } catch (error) {
+      message.error(error.message || '导入失败');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleExportJSON = async () => {
+    const ids = selectedRowKeys.length > 0 ? selectedRowKeys : null;
+    try {
+      const blob = await exportQuestionsToJSON(ids);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `questions_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      message.success('导出成功');
+    } catch (error) {
+      message.error('导出失败');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    const ids = selectedRowKeys.length > 0 ? selectedRowKeys : null;
+    try {
+      const blob = await exportQuestionsToExcel(ids);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `questions_${Date.now()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      message.success('导出成功');
+    } catch (error) {
+      message.error('导出失败');
     }
   };
 
@@ -328,14 +423,54 @@ const Questions = () => {
 
   const optionKeys = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: setSelectedRowKeys
+  };
+
+  const hasSelected = selectedRowKeys.length > 0;
+
+  const exportMenu = (
+    <Menu>
+      <Menu.Item key="json" onClick={handleExportJSON} icon={<DownloadOutlined />}>
+        导出 JSON
+      </Menu.Item>
+      <Menu.Item key="excel" onClick={handleExportExcel} icon={<DownloadOutlined />}>
+        导出 Excel
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <AppLayout>
       <div className="page-content">
         <div className="page-header">
           <h2>题库管理</h2>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增题目
-          </Button>
+          <Space>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              新增题目
+            </Button>
+            <Button icon={<UploadOutlined />} onClick={handleImport}>
+              导入题目
+            </Button>
+            <Dropdown overlay={exportMenu}>
+              <Button icon={<DownloadOutlined />}>
+                导出 {hasSelected ? `(${selectedRowKeys.length})` : ''}
+              </Button>
+            </Dropdown>
+            <Popconfirm
+              title={`确定要删除选中的 ${selectedRowKeys.length} 道题目吗？`}
+              description="删除后无法恢复，确定要删除吗？"
+              onConfirm={handleBatchDelete}
+              okText="确认"
+              cancelText="取消"
+              disabled={!hasSelected}
+            >
+              <Button danger icon={<DeleteOutlined />} disabled={!hasSelected}>
+                批量删除
+              </Button>
+            </Popconfirm>
+          </Space>
         </div>
 
         <Card className="card-shadow" style={{ marginBottom: 16 }}>
@@ -389,6 +524,7 @@ const Questions = () => {
             columns={columns}
             dataSource={questions}
             loading={loading}
+            rowSelection={rowSelection}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
@@ -604,6 +740,52 @@ const Questions = () => {
               )}
             </div>
           )}
+        </Modal>
+
+        <Modal
+          title="导入题目"
+          open={importModalVisible}
+          onCancel={() => setImportModalVisible(false)}
+          footer={null}
+          width={600}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <p>支持以下格式：</p>
+            <Space>
+              <Tag color="blue">Excel (.xlsx)</Tag>
+              <Tag color="blue">Word (.docx)</Tag>
+              <Tag color="blue">PDF (.pdf)</Tag>
+              <Tag color="blue">Markdown (.md)</Tag>
+              <Tag color="blue">JSON (.json)</Tag>
+            </Space>
+          </div>
+          <Upload.Dragger
+            name="file"
+            multiple={false}
+            beforeUpload={(file) => {
+              const validTypes = [
+                '.xlsx', '.xls', '.docx', '.doc', '.pdf', '.md', '.json'
+              ];
+              const fileName = file.name.toLowerCase();
+              const isValid = validTypes.some(type => fileName.endsWith(type));
+              if (!isValid) {
+                message.error('不支持的文件格式');
+                return false;
+              }
+              handleImportFile({ file });
+              return false;
+            }}
+            showUploadList={false}
+            disabled={importLoading}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">点击或拖拽文件到此处上传</p>
+            <p className="ant-upload-hint">
+              支持 Excel, Word, PDF, Markdown, JSON 格式
+            </p>
+          </Upload.Dragger>
         </Modal>
       </div>
     </AppLayout>

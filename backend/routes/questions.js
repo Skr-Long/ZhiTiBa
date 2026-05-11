@@ -7,13 +7,15 @@ const {
   updateQuestion,
   deleteQuestion,
   getMyQuestions,
-  importQuestions
+  importQuestions,
+  batchDeleteQuestions
 } = require('../controllers/questionController');
 
 const router = express.Router();
 
 router.get('/my', protect, getMyQuestions);
 router.post('/import', protect, importQuestions);
+router.post('/batch-delete', protect, batchDeleteQuestions);
 
 router.route('/')
   .get(getQuestions)

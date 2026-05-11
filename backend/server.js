@@ -18,6 +18,10 @@ app.use(morgan('dev'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/ai-agents', require('./routes/aiAgents'));
+app.use('/api/import-export', require('./routes/importExport'));
+app.use('/api/exams', require('./routes/exams'));
+app.use('/api/answers', require('./routes/answers'));
 
 app.get('/', (req, res) => {
   res.json({

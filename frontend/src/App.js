@@ -8,6 +8,9 @@ import Questions from './pages/Questions';
 import Categories from './pages/Categories';
 import Profile from './pages/Profile';
 import Users from './pages/Users';
+import Exams from './pages/Exams';
+import MyAnswers from './pages/MyAnswers';
+import AIAgents from './pages/AIAgents';
 
 function App() {
   return (
@@ -30,6 +33,24 @@ function App() {
         <Route path="/categories" element={
           <ProtectedRoute>
             <Categories />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/exams" element={
+          <ProtectedRoute>
+            <Exams />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/my-answers" element={
+          <ProtectedRoute>
+            <MyAnswers />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/ai-agents" element={
+          <ProtectedRoute>
+            <AIAgents />
           </ProtectedRoute>
         } />
         
